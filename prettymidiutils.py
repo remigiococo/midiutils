@@ -155,27 +155,29 @@ def bin_to_bar(bar, note, str, dur=16):
 				dt2 = dt / n
 				place_at(bar, note, i*dt + j*dt2, dur)
 
-def init_bar(b, quantiz=16):
+def init_bar(b, quantiz=16, time_offset=0.0):
 	global BarDur
-	# Note ha i seguenti campi: pitch, velocity, start, end 
-	dummy = Note( pm.note_name_to_number('C0') )
-	dummy.velocity = 0
+	# Note ha i seguenti campi: pitch, velocity, start, end
+	singledur = BarDur/float(quantiz)
 	for j in range(quantiz):
-		dummy.start = j * ( 1.0 / quantiz )
-		dummy.end = dummy.start + BarDur/float(quantiz)
-		bar.append(dummy)
+		dummy = Note( 0, 0, 0, 0 )
+		dummy.start = j * singledur + time_offset
+		dummy.end = dummy.start + singledur
+		b.append(dummy)
 		
 def clean_bar(b):
 	for x in b:
 		b.remove(x)
 		
 def setup_composition(nbars=64, ntracks=2, quant=16):
+	global BarDur
+	BarDur = 2.0 # 4/4 @ 120 bpm
 	comp = pm.PrettyMIDI()
 	tks =[Instrument(1) for i in range(ntracks)]
 	for i in range(ntracks):
 		bars = [[] for j in range(nbars)]
 		for j in range(nbars):
-			init_bar(bars[j], quant)
+			init_bar(bars[j], quant, BarDur*j)
 			for k in bars[j]:
 				tks[i].notes.append( k )
 		comp.instruments.append( tks[i] )
@@ -198,7 +200,7 @@ class randmel:
 		if y > ls*ottave-1:
 			y = ls*ottave-1
 		self.stato = y	
-		return scala[ y % ls ] + 12 * (y/ls)
+		return scala[ y % ls ] + 12 * (y//ls)
 
 	def extract_note2(self, scala, ottave=3):
 		ls = len(scala)
@@ -211,7 +213,7 @@ class randmel:
 		if y > ls*ottave-1:
 			y = ls*ottave-1
 		self.stato = y	
-		return scala[ y % ls ] + 12 * (y/ls)
+		return scala[ y % ls ] + 12 * (y//ls)
 	
 	def extract_note_tri(self, scala, ottave=3, interval=2):
 		ls = len(scala)
@@ -219,7 +221,7 @@ class randmel:
 		while x == 0:
 			x1 = random.randint(-interval, interval)
 			x2 = random.randint(-interval, interval)
-			x = (x1+x2)/2
+			x = (x1+x2)//2
 		y = self.stato + x
 		if y < 0:
 			y = 0
@@ -227,7 +229,7 @@ class randmel:
 			y = ls*ottave-1
 		self.stato = y
 		# print self.stato # debug	
-		return scala[ y % ls ] + 12 * (y/ls)
+		return scala[ y % ls ] + 12 * (y//ls)
 	
 class randdrum:
 	_OR_VAR_=0
