@@ -169,9 +169,9 @@ def clean_bar(b):
 	for x in b:
 		b.remove(x)
 		
-def setup_composition(nbars=64, ntracks=2, quant=16):
+def setup_composition(nbars=64, ntracks=2, quant=16, tempo=120):
 	global BarDur
-	BarDur = 2.0 # 4/4 @ 120 bpm
+	BarDur = 4 * 60.0 / tempo # 4/4 @ 120 bpm
 	comp = pm.PrettyMIDI()
 	tks =[Instrument(1) for i in range(ntracks)]
 	for i in range(ntracks):
