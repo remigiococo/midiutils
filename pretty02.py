@@ -45,8 +45,9 @@ def test01():
 	c.write("testrand01.mid")
 
 def test02():
-	c = setup_composition(nbars=8)
+	c = setup_composition(nbars=8, tempo=72)
 	rm = randmel()
+	rm.clip = 1
 	sc = [0,2,5,7,9] # esatonica 1
 	sc = [0,2,4,5,7,9,11] # maggiore
 	sc = [0,2,3,5,7,8,10] # minore nat.
@@ -60,6 +61,7 @@ def test02():
 			v = random.randint(0, 127)
 			n.pitch = p
 			n.velocity = v
+			#print(p) # debug
 	# print(c.instruments[0].notes)
 	c.write("testrand02.mid")
 	play_file("testrand02.mid", True)

@@ -190,31 +190,46 @@ def set_track_instrument(track, instr, channel=0):
 class randmel:	
 	def __init__(self):
 		self.stato = 0
+		self.clip = 0 # 0 - clip, 1 - mirror
 		
 	def extract_note(self, scala, ottave=3):
 		ls = len(scala)
 		x = random.randint(-1, 1)
 		y = self.stato + x
-		if y < 0:
-			y = 0
-		if y > ls*ottave-1:
-			y = ls*ottave-1
+		if self.clip == 0:
+			if y < 0:
+				y = 0
+			if y > ls*ottave-1:
+				y = ls*ottave-1
+		else:		
+			if y < 0:
+				y = -y
+			if y > ls*ottave-1:
+				y = ls*ottave-y
 		self.stato = y	
 		return scala[ y % ls ] + 12 * (y//ls)
 
+	# extract_note2 filtra le ripetizioni del numero casuale
 	def extract_note2(self, scala, ottave=3):
 		ls = len(scala)
 		x = 0
 		while x == 0:
 			x = random.randint(-1, 1)
 		y = self.stato + x
-		if y < 0:
-			y = 0
-		if y > ls*ottave-1:
-			y = ls*ottave-1
+		if self.clip == 0:
+			if y < 0:
+				y = 0
+			if y > ls*ottave-1:
+				y = ls*ottave-1
+		else:		
+			if y < 0:
+				y = -y
+			if y > ls*ottave-1:
+				y = ls*ottave-y
 		self.stato = y	
 		return scala[ y % ls ] + 12 * (y//ls)
 	
+	# extract_note_tri genera con distribuzione triangolare
 	def extract_note_tri(self, scala, ottave=3, interval=2):
 		ls = len(scala)
 		x = 0
@@ -223,12 +238,18 @@ class randmel:
 			x2 = random.randint(-interval, interval)
 			x = (x1+x2)//2
 		y = self.stato + x
-		if y < 0:
-			y = 0
-		if y > ls*ottave-1:
-			y = ls*ottave-1
+		if self.clip == 0:
+			if y < 0:
+				y = 0
+			if y > ls*ottave-1:
+				y = ls*ottave-1
+		else:		
+			if y < 0:
+				y = -y
+			if y > ls*ottave-1:
+				y = ls*ottave-y
 		self.stato = y
-		# print self.stato # debug	
+		# print( self.stato )# debug	
 		return scala[ y % ls ] + 12 * (y//ls)
 	
 class randdrum:
