@@ -2,6 +2,7 @@ import sys
 import array
 import struct
 import pretty_midi
+import mido
 
 # gestione file binario
 def gestione_file(nomefile):
@@ -30,6 +31,13 @@ def gestione_file(nomefile):
 	ff.close()
 	
 def parse_drum(raw, offset=0):
+	global SAVE_MIDI
+	if SAVE_MIDI:
+		mf = mido.MidiFile()
+		mf.ticks_per_beat = 96
+		trk = mido.MidiTrack()
+		trk.channel = 9
+		trk.name = "t1"
 	i = offset
 	max_i = len(raw[i:]) - 4
 	while (i < max_i) and ( raw[i:i+4] != array.array('B', [ord(x) for x in "DRUM"]) ):
@@ -60,9 +68,23 @@ def parse_drum(raw, offset=0):
 			b3 = raw[i+2]
 			dr = '{0:24s}'.format(pretty_midi.note_number_to_drum_name(b2))
 			print("time: ", b1, "\tnote: ", b2, "\t", dr, "\tvel: ", b3)
+			if SAVE_MIDI and (b2 <= 120):
+				mm = mido.Message('note_on', note=b2, time=b1, velocity=b3) # note off ???
+				mm.channel = 9
+				trk.append(mm)
 			i = i + 3
+	if SAVE_MIDI:
+		mf.tracks.append(trk)
+		mf.save("test.mid")
 
 def parse_othr(raw, offset=0):
+	global SAVE_MIDI
+	if SAVE_MIDI:
+		mf = mido.MidiFile()
+		mf.ticks_per_beat = 96
+		trk = mido.MidiTrack()
+		trk.channel = 0
+		trk.name = "t1"
 	i = offset
 	max_i = len(raw[i:]) - 4
 	while (i < max_i) and ( raw[i:i+4] != array.array('B', [ord(x) for x in "OTHR"]) ):
@@ -96,7 +118,15 @@ def parse_othr(raw, offset=0):
 			else:
 				dr = "######"
 			print("time: ", b1, "\tnote: ", b2, "\t", dr, "\tvel: ", b3)
+			if SAVE_MIDI and (b2 <= 120):
+				mm = mido.Message('note_on', note=b2, time=b1, velocity=b3) # note off ???
+				mm.channel = 0
+				trk.append(mm)
 			i = i + 3
-		
+	if SAVE_MIDI:
+		mf.tracks.append(trk)
+		mf.save("test2.mid")
+
+SAVE_MIDI = True		
 if len(sys.argv) > 1:
 	gestione_file(sys.argv[1])
