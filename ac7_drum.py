@@ -21,7 +21,8 @@ def gestione_file(nomefile):
 		print("not AC7 format !!!", data_raw[0:4])
 		sys.exit(0)
 	dlen = struct.unpack('H', data_raw[4:6])[0]
-	print("data len:", dlen)	
+	print("data len:", dlen)
+	parse_mixr(data_raw, 6)
 	parse_drum(data_raw, 6)
 	parse_othr(data_raw, 6)
 	#ff.seek(4, 0)
@@ -29,6 +30,40 @@ def gestione_file(nomefile):
 	#ff.seek(40, 0)
 	#ff.write(struct.pack('l', dlen))
 	ff.close()
+	
+def parse_mixr(raw, offset=0):
+	i = offset
+	max_i = len(raw[i:]) - 4
+	while (i < max_i) and ( raw[i:i+4] != array.array('B', [ord(x) for x in "MIXR"]) ):
+		i = i + 1
+	start_mixr = i	
+	print("found MIXR at offset:", start_mixr, hex(start_mixr))
+	i = i + 4
+	mlen = struct.unpack('H', raw[i:i+2])[0]
+	print("mixr section len:", mlen)
+	i = i + 4
+	nsect = struct.unpack('H', raw[i:i+2])[0]
+	print("n. sections:", nsect)
+	mlen_eff = mlen - 10 # tolti 4 byte  "MIXR", 4 byte di lunghezza, 2 byte di num. sezioni
+	mlen_eff = mlen_eff - (nsect*4) # tolti gli offset
+	sectlen = mlen_eff // nsect
+	print("section length:", sectlen)
+	i = i + 2
+	sect_offs = []
+	for j in range(nsect):
+		offs = struct.unpack('L', raw[i:i+4])[0]
+		sect_offs.append(offs)
+		i = i + 4
+	# final offset
+	sect_offs.append(start_mixr + mlen)	
+	print([hex(x) for x in sect_offs]) # debug
+	for j in range(nsect):
+		print("MIXR Sect. #", j+1)
+		i = sect_offs[j]
+		while i < sect_offs[j+1]:
+			b = [raw[i+k] for k in range(sectlen)]
+			print(b) # debug	
+			i = i + sectlen	
 	
 def parse_drum(raw, offset=0):
 	global SAVE_MIDI
@@ -60,7 +95,7 @@ def parse_drum(raw, offset=0):
 	sect_offs.append(start_drum + dlen)	
 	print([hex(x) for x in sect_offs]) # debug
 	for j in range(nsect):
-		print("Sect. #", j+1)
+		print("DRUM Sect. #", j+1)
 		i = sect_offs[j]
 		while i < sect_offs[j+1]:
 			b1 = raw[i]
@@ -68,10 +103,15 @@ def parse_drum(raw, offset=0):
 			b3 = raw[i+2]
 			dr = '{0:24s}'.format(pretty_midi.note_number_to_drum_name(b2))
 			print("time: ", b1, "\tnote: ", b2, "\t", dr, "\tvel: ", b3)
-			if SAVE_MIDI and (b2 <= 120):
-				mm = mido.Message('note_on', note=b2, time=b1, velocity=b3) # note off ???
-				mm.channel = 9
-				trk.append(mm)
+			if SAVE_MIDI:
+				if (b2 <= 127):
+					mm = mido.Message('note_on', note=b2, time=b1, velocity=b3) # note off ???
+					mm.channel = 9
+					trk.append(mm)
+				elif (b2 < 250):
+					mm = mido.Message('note_on', note=0, time=b1, velocity=0) # note non gestite - pause ???
+					mm.channel = 9
+					trk.append(mm)
 			i = i + 3
 	if SAVE_MIDI:
 		mf.tracks.append(trk)
@@ -107,7 +147,7 @@ def parse_othr(raw, offset=0):
 	sect_offs.append(start_othr + dlen)	
 	print([hex(x) for x in sect_offs]) # debug
 	for j in range(nsect):
-		print("Sect. #", j+1)
+		print("OTHR Sect. #", j+1)
 		i = sect_offs[j]
 		while i < sect_offs[j+1]:
 			b1 = raw[i]
@@ -118,10 +158,15 @@ def parse_othr(raw, offset=0):
 			else:
 				dr = "######"
 			print("time: ", b1, "\tnote: ", b2, "\t", dr, "\tvel: ", b3)
-			if SAVE_MIDI and (b2 <= 120):
-				mm = mido.Message('note_on', note=b2, time=b1, velocity=b3) # note off ???
-				mm.channel = 0
-				trk.append(mm)
+			if SAVE_MIDI: 
+				if (b2 <= 127):
+					mm = mido.Message('note_on', note=b2, time=b1, velocity=b3) # note off ???
+					mm.channel = 0
+					trk.append(mm)
+				elif (b2 < 250):
+					mm = mido.Message('note_on', note=0, time=b1, velocity=0) # note non gestite - pause ???
+					mm.channel = 0
+					trk.append(mm)
 			i = i + 3
 	if SAVE_MIDI:
 		mf.tracks.append(trk)
