@@ -186,6 +186,132 @@ def setup_composition(nbars=64, ntracks=2, quant=16, tempo=120):
 def set_track_instrument(track, instr, channel=0):
 	track.program = instr
 		
+def gen_dur_div(x=[1.0], n=3):
+	if n == 0:
+		return x
+	l = len(x)
+	r = random.randint(0, l-1)
+	x[r] = x[r] / 2
+	x.insert(r+1, x[r])
+	return gen_dur_div(x, n-1)
+
+def gen_bar_1(b, time_offset=0.0, chord="C maj", octave=3):
+	global BarDur
+	durate = [ BarDur/2.0, BarDur/4.0, BarDur/8.0, BarDur/16.0 ]
+	majc = [0, 4, 7]
+	minc = [0, 3, 7]
+	sevc = [0, 4, 7, 10]
+	ch = chord.split(" ")
+	#print(ch) # debug
+	if ch[1] == "maj":
+		cur_ch = majc
+	elif	ch[1] == "min":
+		cur_ch = minc
+	elif	ch[1] == "7":
+		cur_ch = sevc
+	else:
+		cur_ch = majc
+	d = 0
+	while d < BarDur:
+		basepitch = pm.note_name_to_number(ch[0]+ str(octave))
+		roct = random.randint(-1,1)
+		rpitch = cur_ch[ random.randint(0, len(cur_ch)-1) ] + basepitch + roct*12
+		#print(basepitch, roct, rpitch, pm.note_number_to_name(rpitch)) # debug
+		rvel = random.randint(80,127)
+		rdur = 2.0*BarDur
+		while (d + rdur) > BarDur:
+			rdur = durate[ random.randint(0,3) ]
+		#print(rdur, BarDur)	
+		n = Note(rvel, rpitch, time_offset + d, time_offset + d + rdur)
+		b.append(n)
+		d = d + rdur
+	#print("---")
+	
+def gen_bar_2(b, time_offset=0.0, chord="C maj", octave=3, add_root=False):
+	global BarDur
+	durate = [ BarDur/2.0, BarDur/4.0, BarDur/8.0, BarDur/16.0 ]
+	ch = chord.split(" ")
+	basepitch = pm.note_name_to_number(ch[0]+ str(octave))
+	if add_root:	
+		root = Note(100, pm.note_name_to_number(ch[0]+"1"), time_offset, time_offset + BarDur)
+		b.append(root)
+	mk = markov(basepitch)	
+	d = 0
+	while d < BarDur:
+		rpitch = mk.next()
+		#print(basepitch, rpitch, pm.note_number_to_name(rpitch)) # debug
+		rvel = random.randint(80,127)
+		rdur = 2.0*BarDur
+		while (d + rdur) > BarDur:
+			rdur = durate[ random.randint(0,3) ]
+		n = Note(rvel, rpitch, time_offset + d, time_offset + d + rdur)
+		b.append(n)
+		d = d + rdur
+
+def gen_bar_3(b, time_offset=0.0, chord="C maj", octave=3, add_root=False):
+	global BarDur
+	durate = [ BarDur/2.0, BarDur/4.0, BarDur/8.0, BarDur/16.0 ]
+	ch = chord.split(" ")
+	basepitch = pm.note_name_to_number(ch[0]+ str(octave))
+	if add_root:	
+		root = Note(100, pm.note_name_to_number(ch[0]+"1"), time_offset, time_offset + BarDur)
+		b.append(root)
+	mk = markov(basepitch)
+	quarter = BarDur/4.0
+	durs = gen_dur_div([quarter, quarter, quarter, quarter], 2)
+	d = 0
+	for rdur in durs:
+		rpitch = mk.next()
+		#print(basepitch, rpitch, pm.note_number_to_name(rpitch)) # debug
+		rvel = random.randint(80,127)
+		n = Note(rvel, rpitch, time_offset + d, time_offset + d + rdur)
+		b.append(n)
+		d = d + rdur
+
+def gen_bar_4(b, time_offset=0.0, chord="C maj", octave=3, add_root=False):
+	global BarDur
+	durate = [ BarDur/2.0, BarDur/4.0, BarDur/8.0, BarDur/16.0 ]
+	ch = chord.split(" ")
+	basepitch = pm.note_name_to_number(ch[0]+ str(octave))
+	if add_root:	
+		root = Note(100, pm.note_name_to_number(ch[0]+"1"), time_offset, time_offset + BarDur)
+		b.append(root)
+	mk = scala(sc="101010010000", dist="gauss", ini=basepitch, octaves=1)
+	quarter = BarDur/4.0
+	durs = gen_dur_div([quarter, quarter, quarter, quarter], 2)
+	d = 0
+	for rdur in durs:
+		rpitch = mk.next()
+		#print(basepitch, rpitch, pm.note_number_to_name(rpitch)) # debug
+		rvel = random.randint(80,127)
+		n = Note(rvel, rpitch, time_offset + d, time_offset + d + rdur)
+		b.append(n)
+		d = d + rdur
+		
+def gen_composition_1(nbars=64, ntracks=2, quant=16, tempo=120, chords=["C maj", "D min", "A min", "F maj"]):
+	global BarDur
+	BarDur = 4 * 60.0 / float(tempo) # 4/4 @ 120 bpm
+	BarDurDiv = int(65536 * BarDur)
+	BarDur = BarDurDiv / 65536
+	#print("BarDur", BarDur)
+	comp = pm.PrettyMIDI()
+	chord_div = nbars//len(chords)
+	tks =[Instrument(1) for i in range(ntracks)]
+	addr = False
+	for i in range(ntracks):
+		if i == ntracks - 1:
+			addr = True
+		bars = [[] for j in range(nbars)]
+		for j in range(nbars):
+			# gen bar
+			#gen_bar_1(bars[j], BarDur*j, chords[j//chord_div])
+			#gen_bar_2(bars[j], BarDur*j, chords[j//chord_div], add_root=addr)
+			#gen_bar_3(bars[j], BarDur*j, chords[j//chord_div], add_root=addr)
+			gen_bar_4(bars[j], BarDur*j, chords[j//chord_div], add_root=addr)
+			for k in bars[j]:
+				tks[i].notes.append( k )
+		comp.instruments.append( tks[i] )
+	return comp
 	
 class randmel:	
 	def __init__(self):
@@ -398,4 +524,86 @@ class randdrum:
 			for n in randdrum2.comp.instruments[i].notes:
 				self.comp.instruments[i].notes.append(n)
 			# print("TRACK ", i, self.comp.instruments[i].notes) # debug
-	
+
+class markov:
+	def __init__(self, st=40):
+		# weighs (interval transition)
+		self.prob_w = [ 
+			# row = 0..11   col = 0..12
+			[ 1,0,90,0,90,1,0,2,0,1,0,0,1 ],
+			[ 1,0,0,0,0,0,0,0,0,0,0,0,0 ],
+			[ 1,0,90,1,0,2,0,1,0,0,0,0,0 ],
+			[ 1,0,0,0,0,0,0,0,0,0,0,0,0 ],
+			[ 1,1,0,2,0,1,0,0,1,0,0,0,0 ],
+			[ 1,0,2,0,1,0,0,1,0,0,0,0,0 ],
+			[ 1,0,0,0,0,0,0,0,0,0,0,0,0 ],
+			[ 1,0,1,0,0,1,0,0,0,0,0,0,0 ],
+			[ 1,0,0,0,0,0,0,0,0,0,0,0,0 ],
+			[ 1,0,0,1,0,0,0,0,0,0,0,0,0 ],
+			[ 1,0,0,0,0,0,0,0,0,0,0,0,0 ],
+			[ 1,1,0,0,0,0,0,0,0,0,0,0,0 ] ]
+		# normalization
+		self.prob = [ [ [0.0, 0.0] for c in range(13) ] for r in range(12) ]
+		for r in range(12):
+			sum_w = 0
+			for c in range(13):
+				sum_w += self.prob_w[r][c]
+			start = 0.0
+			for c in range(13):
+				p = self.prob_w[r][c] / sum_w
+				self.prob[r][c][0] = start
+				self.prob[r][c][1] = start + p
+				start = start + p
+		self.start = st
+		self.stato = 0
+		
+	def next(self):
+		ok = False
+		row = self.stato % 12
+		#print("row", row)
+		while ok == False:
+			rx = random.uniform(0,1)
+			col = random.randint(0, 12)
+			if rx >= self.prob[row][col][0] and rx < self.prob[row][col][1]:
+				val = self.start + self.stato + col
+				if val >= 0 and val <= 127:
+					self.stato = self.stato + col
+					return val
+					
+class scala:
+	def __init__(self, sc="101011010101", dist="uniform", ini=40, octaves=2):
+		if len(sc) != 12:
+			raise RuntimeError("Not valid Scale string")
+		self.scale1 = [ int(x) for x in sc ]
+		self.scale = [ i for i in range(len(sc)) if self.scale1[i] == 1 ]
+		self.length = self.scale1.count(1)
+		self.min = -octaves * self.length
+		self.max = octaves * self.length
+		self.dist = dist
+		self.stato = 0
+		self.start = ini
+		#print("length", self.length)
+		#print("scale", self.scale)
+		
+	def next(self):
+		if self.dist == "uniform":
+			rn = random.uniform(-1,1)
+		elif self.dist == "tri":
+			rn = random.triangular(-1,1)
+		elif self.dist == "gauss":
+			rn = random.gauss(0, 0.5)
+			if rn < -0.99:
+				rn = -0.99
+			if rn > 0.99:
+				rn = 0.99
+		ndx = int(rn * self.length)
+		self.stato = self.stato + ndx
+		if( self.stato < self.min ):
+			self.stato = self.min
+		if( self.stato > self.max ):
+			self.stato = self.max
+		octave = self.stato // self.length
+		note = self.stato % self.length
+		#print(self.stato, octave, note)	
+		return self.start + self.scale[note] + octave * 12
+			
