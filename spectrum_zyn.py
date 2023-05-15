@@ -38,7 +38,7 @@ template_preset='''
 <par name="filter_before_wave_shaping" value="0"/>
 <par name="spectrum_adjust_type" value="0"/>
 <par name="spectrum_adjust_par" value="64"/>
-<par name="rand" value="113"/>
+<par name="rand" value="64"/>
 <par name="amp_rand_type" value="0"/>
 <par name="amp_rand_power" value="64"/>
 <par name="harmonic_shift" value="0"/>
