@@ -9,6 +9,7 @@ import wave
 
 NUM_FFT_POINTS=8192
 HALF_FFT_POINTS=(NUM_FFT_POINTS//2)
+MAX_HARMONICS=128
 
 template_preset='''
 <?xml version="1.0" encoding="UTF-8"?>
@@ -60,7 +61,7 @@ HARMONICS_VAL
 template_harmonic='''
 <HARMONIC id="ID_VAL">
 <par name="mag" value="MAG_VAL"/>
-<par name="phase" value="64"/>
+<par name="phase" value="PHA_VAL"/>
 </HARMONIC>'''
 
 FILE_ANALISI="spettro.txt"
@@ -160,7 +161,7 @@ elif ".wav" in filename:
 		x[i][2] = ph[i]
 	#print(type(x), x.shape)
 	print(len(fR))
-	print(ph[0:30])
+	#print(ph[0:30])
 else:
 	sys.exit(0)	
 #max_db=x.max(axis=1)
@@ -173,21 +174,24 @@ f=base_freq
 fr=x[:,0]
 harmonics=[]
 phases=[]
-while f < max_freq:
+nh=0
+while (f < max_freq) and (nh < MAX_HARMONICS):
 	j, f2 = find_nearest(fr, f)
 	z = x[j][1]
 	mag = np.power( 10.0, (z/20.0) ) # inverso del dB
 	harmonics.append(mag)
 	phases.append(x[j][2])
 	f += base_freq
+	nh = nh + 1
 print("n. harmonics:", len(harmonics))	
 #print(harmonics)
 max_h = max(harmonics)
 #normalizzazione
 harmonics_n = [int( h * 63.0 / max_h ) + 64 for h in harmonics]
 #print(harmonics_n)
+#print(phases)
 #
-# ricostruzione forma d'onda - non funziona con le fasi !!!
+# ricostruzione forma d'onda - funziona con le fasi ma col coseno !!!
 #
 i = 0
 npoints = NUM_FFT_POINTS
@@ -197,14 +201,14 @@ for h in harmonics_n:
 	for j in range(npoints):
 		pl[j] += true_h * np.cos( phases[i] + 2 * np.pi * 4 * (i+1) * j / npoints )
 		#pl[j] += true_h * np.sin( 2.0 * np.pi * 4 * (i+1) * j / npoints )
-		#pl[j] += true_h * np.sin( (phases[i]/base_freq) + 2.0 * 4 * np.pi * (i+1) * j / npoints )
+		#pl[j] += true_h * np.sin( phases[i] + 2 * np.pi * 4 * (i+1) * j / npoints )
 	i += 1
 # print(pl)
 if enable_plot:
 	fig, ax = plt.subplots(3)
 	ax[0].plot(pl)
 	ax[1].plot(harmonics)
-	ax[2].plot(ph)
+	ax[2].plot(phases)
 	plt.show()
 # XML
 h_xml = []
@@ -213,6 +217,14 @@ for h in harmonics_n:
 	tmpx = template_harmonic[0:]
 	tmpx = tmpx.replace("ID_VAL", str(i))
 	tmpx = tmpx.replace("MAG_VAL", str(h))
+	norm_p = -phases[i-1] + np.pi / 2.0 # sin(x) = cos(-x + pi/2)
+	while norm_p < -np.pi:
+		norm_p = norm_p + 2.0*np.pi
+	while norm_p > np.pi:
+		norm_p = norm_p - 2.0*np.pi
+	# norm_p tra -pi e +pi	
+	p = 64 + int( norm_p * 64.0 / np.pi )
+	tmpx = tmpx.replace("PHA_VAL", str(p))
 	i = i + 1
 	h_xml.append(tmpx)
 armonici = "".join(h_xml)	
